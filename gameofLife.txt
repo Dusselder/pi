@@ -1,0 +1,287 @@
+import pygame#type: ignore
+import random
+import matplotlib.pyplot as plt # type: ignore
+
+print("Hallo bei meinem Game of Life. Ich habe noch ein paar änderungen gemacht weil ich dachte es wäre interessanter mit Krankheiten.")
+print("Die Krankheiten können sich pro Generation weiterentwickeln und ihre Lebensdauer usw. verbessern aber auch verschlechtern.")
+print("Zur besseren Darstellung habe ich noch Farben hinzugefügt. Grün ist für eine lebendige Zelle und umso Gelber sie wird desto älter ist sie.")
+print("Die Blauen Zellen sind die Krankheiten. Sie unterscheiden sich auch in der Farbe umso weißer, desto längere Lebenszeit")
+print("Man kann die Geschwindigkeit durch die Zahl Tasten ändern. Die Zahl steht immer für 10x so viele fps außer bei 0 ist es ein fps")
+
+
+#Varaibles 
+##for show
+tick_label = ['Dead', 'Life', 'Sick']
+left = [1, 2, 3]
+res = (1000,1000)
+c_red = (255,0,0)
+c_green = (0,255,0)
+c_grey = (100, 100, 100)
+c_blue = (0,0,255)
+c_black = (0,0,0)
+c_white = (255,255,255)
+c_hellgray = (150, 150, 150)
+c_background = c_black
+c_line = c_grey
+c_cell = (255, 255, 1)
+linebreite = 1
+maxfps = 20
+#for lines 
+sice = 200
+
+#Points
+lenght = res[0] / sice
+l_x = []
+l_y = []
+cells = []
+
+p = []
+
+cell_dict = {}
+
+
+
+# pygame setup
+pygame.init()
+screen = pygame.display.set_mode(res)
+clock = pygame.time.Clock()
+running = True
+
+class Cell():
+    def __init__(self, pos, state, mutation):
+        #for all Cell
+        self.age = 0
+        self.pos = pos
+        self.state = state # 0 ist Tot, 1 ist Legendig, 2 ist Krank und kann anstcken 
+        self.nextstate = state
+        self.n = [((pos[0]), pos[1]+1), (pos[0], pos[1]-1), (pos[0]+1, pos[1]), (pos[0]-1, pos[1]), ((pos[0]+1), pos[1]+1), (pos[0]-1, pos[1]-1), (pos[0]+1, pos[1]-1), (pos[0]-1, pos[1]+1)]
+
+        #for Lifing Cell
+
+        #for Sick Cell
+        self.max_lifetime = 9
+        self.lifetime = self.max_lifetime
+        self.infectionpower = 0.5
+        self.infectionpowerfromparant = []
+        self.lifetimefromparant = []
+
+        #For Color
+        if(self.state == 2): 
+            if(self.max_lifetime * 10> 255):
+                self.color = (1 * (255), 250, 250)
+            else:
+                self.color = (1 * (self.max_lifetime * 20), 250, 250)
+        else: self.color = (1 * (self.age * 10), 250, 0)#(1*self.mutation, 1*self.mutation, 1*self.mutation)
+
+    def drawn(self):
+        print(f"Self:{self.pos}")
+        
+        for c in cells:
+            for n in self.n:
+                if n == c.pos:
+                    p.append(c)
+                    print(c.pos)
+        print(f"p:{len(p)}")
+
+    def checkNeighbor(self):
+        infectionpower = 0
+        if(self.state == 2):
+            if(self.max_lifetime * 20> 255):
+                self.color = (1 * (255), 250, 250)
+            else:
+                self.color = (1 * (self.max_lifetime * 10), 250, 250)
+            self.lifetime -= 1
+        else:
+            self.color = (1 * (self.age * 10), 250, 0)
+            count_alive = 0
+            count_sick = 0
+            for n in self.n:
+                if n in cell_dict:
+                    if cell_dict[n].state == 1:
+                        count_alive += 1
+                    if cell_dict[n].state == 2:
+                        self.lifetimefromparant.append(cell_dict[n].lifetime)
+                        infectionpower += cell_dict[n].infectionpower
+                        count_sick += 1
+
+        if(self.state == 0):
+            if(count_alive == 3):
+                self.nextstate = 1
+                self.age = 0
+        if(self.state == 1):
+            if not (count_alive == 2 or count_alive == 3):
+                self.nextstate = 0
+            if(count_sick >= 1):
+                infectionpower = infectionpower / count_sick
+                livetime = 0
+                for l in self.lifetimefromparant: livetime += l
+                if random.random() < infectionpower:
+                    livetime = livetime / len(self.lifetimefromparant)
+                    self.max_lifetime = Glockengraph(livetime, 2, float("inf"), 0)
+                    self.lifetime = self.max_lifetime
+                    self.nextstate = 2
+                    self.infectionpower = Glockengraph(infectionpower, 0.05, 1, 0)
+                    #print(self.infectionpower)
+        if(self.state == 2):
+            if(self.lifetime < 0): 
+                self.nextstate = 0
+
+        if(self.age * 10 < 250):
+            self.age += 1
+
+    def updatestate(self):
+        if(self.state == 0):
+            if(self.nextstate == 1):
+                self.state = self.nextstate
+                self.age = 0
+        elif(self.state == 1):
+            if(self.nextstate == 2):
+                self.state = self.nextstate
+                self.lifetime = self.max_lifetime
+            elif(self.nextstate == 0):
+                self.state = self.nextstate
+        elif(self.state == 2):
+            if(self.nextstate == 0):
+                self.state = self.nextstate
+
+        
+                    
+
+
+def setpoints():
+    counter = 0
+    counterx = 0
+    countery = 0
+    for s in range(sice):
+        vertical = (res[0] / sice) * s
+        l_x.append(vertical)
+    for s in range(sice):
+        horizontal = (res[1] / sice) * s
+        l_y.append(horizontal)
+    for x in range(len(l_x)):
+        for y in range(len(l_y)):
+            #if (x, y) in [(1,5),(1,6),(2,5),(2,6),(11,5),(11,6),(11,7),(12,4),(12,8),(13,3),(13,9),(14,3),(14,9),(15,6),(16,4),(16,8),(17,5),(17,6),(17,7),(18,6),(21,3),(21,4),(21,5),(22,3),(22,4),(22,5),(23,2),(23,6),(25,1),(25,2),(25,6),(25,7),(35,3),(35,4),(36,3),(36,4)]:
+            if(x * y) % 17 in [0, 1, 2, 3]:#coole Muster:  (x + y) % 5 == 0 or (x - y) % 4 == 0:  ,  (x * x + y * y) % 17 < 3: ,  (x % 4 == y % 4) or (x * y) % 13 == 1: ,  (x * y) % 17 in [0, 1, 2, 3]: 
+                if random.random() < 0.05:
+                    cells.append(Cell((int(x), int(y)), 2, 1))  #def __init__(self, pos, state, mutation):
+                else:
+                    cells.append(Cell((int(x), int(y)), 1, 1))  #def __init__(self, pos, state, mutation):
+            else:
+                cells.append(Cell((int(x), int(y)), 0, 1))
+            counter += 1
+    for c in cells:
+        cell_dict[c.pos] = c
+
+
+def drawline():
+    for s in range(sice+1):
+        vertical = (res[0] / sice) * s
+        pygame.draw.line(screen, c_line, (vertical, 0), (vertical, res[0]), linebreite)
+    for s in range(sice+1):
+        horizontal = (res[1] / sice) * s
+        pygame.draw.line(screen, c_line, (0, horizontal), (res[0], horizontal), linebreite)
+
+def Glockengraph(mu, sigma, max, min):
+    for i in range(100):
+        #print("1")
+        val = random.gauss(mu, sigma)
+        val = round(val, 5)
+        if min <= val <= max:
+            break
+    return val
+
+setpoints()
+
+def showinfos():
+    ce_sick = 0
+    ce_life = 0
+    ce_dead = 0
+    x = []
+    x.clear()
+    for c in cells:
+        if(c.state == 0):
+            ce_dead += 1
+        elif(c.state == 1):
+            ce_life += 1
+        elif(c.state == 2):
+            ce_sick += 1
+            x.append(c.max_lifetime)
+
+
+    height = [ce_dead, ce_life, ce_sick]
+
+    plt.scatter(x, x, label= "stars", color= "green", 
+        marker= "*", s=30)
+
+    plt.xlabel('x - axis')
+    # naming the y-axis
+    plt.ylabel('y - axis')
+    # plot title
+    plt.title('Statistiken')
+
+    # function to show the plot
+    plt.show()
+
+#print(Glockengraph(10, 5, 255, 0))
+
+
+while running:
+    # poll for events
+    # pygame.QUIT event means the user clicked X to close your window
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        
+        if event.type == pygame.KEYDOWN:
+               
+            # checking if key "A" was pressed
+            if event.key == pygame.K_1:
+                maxfps = 10
+            if event.key == pygame.K_2:
+                maxfps = 20
+            if event.key == pygame.K_3:
+                maxfps = 30
+            if event.key == pygame.K_4:
+                maxfps = 40
+            if event.key == pygame.K_5:
+                maxfps = 50
+            if event.key == pygame.K_6:
+                maxfps = 60
+            if event.key == pygame.K_7:
+                maxfps = 70
+            if event.key == pygame.K_8:
+                maxfps = 80
+            if event.key == pygame.K_9:
+                maxfps = 90
+            if event.key == pygame.K_0:
+                maxfps = 1
+            if event.key == pygame.K_x:
+                running = False
+            if event.key == pygame.K_s:
+                showinfos()
+            
+
+
+    # fill the screen with a color to wipe away anything from last frame
+    screen.fill(c_background)
+
+    # RENDER YOUR GAME HERE
+    for c in cells:
+            if(c.state == 1):
+                pygame.draw.rect(screen, c.color, (l_x[c.pos[0]], l_y[c.pos[1]], lenght, lenght))
+            if(c.state == 2):
+                pygame.draw.rect(screen, c.color, (l_x[c.pos[0]], l_y[c.pos[1]], lenght, lenght))
+            c.checkNeighbor()
+    for c in cells:
+        c.updatestate()
+
+    drawline()
+
+
+    # flip() the display to put your work on screen
+
+    pygame.display.flip()
+
+    clock.tick(maxfps)  # limits FPS to maxfps
+
+pygame.quit()
