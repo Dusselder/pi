@@ -6,3 +6,4 @@
 
 ! ipadress import requests; print(requests.get('https://api.ipify.org').text) !
 
+! hostname import socket; print(socket.getfqdn()) !
