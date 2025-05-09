@@ -6,5 +6,5 @@
 
 ! ipadress hostname = socket.gethostname()
 ip_address = socket.gethostbyname(hostname)
-print("ip_address) !
+print(ip_address) !
 
