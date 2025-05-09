@@ -1,1 +1,1 @@
-fuck: print("Hello")
+fuck print("Hello")
